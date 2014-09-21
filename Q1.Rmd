@@ -1,0 +1,58 @@
+---
+title: "Statistical Inference - Course Project - Question 1"
+author: "Francois Schonken"
+date: '2014-09-21'
+output:
+  html_document:
+    keep_md: yes
+  pdf_document: default
+---
+
+```{r, echo=FALSE, message=FALSE, cache=FALSE}
+# require(gdata)
+require(ggplot2)
+# require(lattice)
+require(knitr)
+# require(plyr)
+# require(reshape2)
+require(xtable)
+# require(markdown)
+
+# set.seed(54321)
+set.seed(12345)
+opts_chunk$set(echo=TRUE, fig.align='center', message=FALSE, cache=FALSE)
+```
+
+
+## Synopsis
+In this simulation, I will investigate the distribution of averages of 40 exponential(0.2)s. I will illustrate via simulation and associated explanatory text the properties of the distribution of the mean of 40 exponential(0.2)s in an attempt to address the following questions:
+
+1. Show where the distribution is centered at and compare it to the theoretical center of the distribution.
+2. Show how variable it is and compare it to the theoretical variance of the distribution.
+3. Show that the distribution is approximately normal.
+4. Evaluate the coverage of the confidence interval for $1/\lambda = \bar{X} \pm 1.96 \frac{S}{\sqrt{n}}$.
+
+Initilize our simulation dataset with $\lambda$=0.2, 40 samples and 1000 rows per sample.
+```{r}
+lambda <- 0.2; s <- 40; n <- 1000;
+dist <- matrix(rexp(s*n, rate=lambda), ncol=s, nrow=n)
+distMean <- rowMeans(dist)
+# summary(distMean)
+```
+
+### 1. Show where the distribution is centered at and compare it to the theoretical center of the distribution.
+
+Calculate the expected theoretical center and the center (mean) of `distMean`. 
+```{r  DistCenterHist, fig.width=8}
+centerTheoretical <- 1/lambda
+centerCalculated <- mean(distMean)
+
+pl <- ggplot(data=data.frame(distMean), aes(x=distMean)) +
+  geom_histogram(binwidth=0.25, colour='white') + 
+  ggtitle('Frequency of Distribution Means') + xlab('Distribution Mean') + 
+  scale_x_continuous(breaks = round(seq(min(distMean), max(distMean), by = 0.5),1)) + 
+  geom_vline(xintercept=centerCalculated, colour='green') + ylab('Frequency')
+print(plot)
+```
+
+The theoretical center of the distribution is: $1/\lambda$ = 1/0.2 = `r centerTheoretical`. The center of the distribution, indicated by the green line, is `r centerCalculated`.
