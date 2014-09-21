@@ -1,58 +1,103 @@
 ---
 title: "Statistical Inference - Course Project - Question 1"
-author: "Francois Schonken"
 date: '2014-09-21'
 output:
+  pdf_document: default
   html_document:
     keep_md: yes
-  pdf_document: default
 ---
 
 ```{r, echo=FALSE, message=FALSE, cache=FALSE}
-# require(gdata)
 require(ggplot2)
-# require(lattice)
 require(knitr)
-# require(plyr)
-# require(reshape2)
-require(xtable)
-# require(markdown)
 
-# set.seed(54321)
-set.seed(12345)
-opts_chunk$set(echo=TRUE, fig.align='center', message=FALSE, cache=FALSE)
+set.seed(987654)
+opts_chunk$set(echo=TRUE, message=FALSE, cache=FALSE)
 ```
 
-
-## Synopsis
-In this simulation, I will investigate the distribution of averages of 40 exponential(0.2)s. I will illustrate via simulation and associated explanatory text the properties of the distribution of the mean of 40 exponential(0.2)s in an attempt to address the following questions:
-
-1. Show where the distribution is centered at and compare it to the theoretical center of the distribution.
-2. Show how variable it is and compare it to the theoretical variance of the distribution.
-3. Show that the distribution is approximately normal.
-4. Evaluate the coverage of the confidence interval for $1/\lambda = \bar{X} \pm 1.96 \frac{S}{\sqrt{n}}$.
-
-Initilize our simulation dataset with $\lambda$=0.2, 40 samples and 1000 rows per sample.
+### Synopsis
+In this simulation, I will investigate the distribution of averages of 40 exponential(0.2)s. I will illustrate via simulation and associated explanatory text the properties of the distribution of the mean of 40 exponential(0.2)s. Initilize our simulation dataset with $\lambda$=0.2, 40 samples and 1000 rows per sample.
 ```{r}
 lambda <- 0.2; s <- 40; n <- 1000;
 dist <- matrix(rexp(s*n, rate=lambda), ncol=s, nrow=n)
 distMean <- rowMeans(dist)
-# summary(distMean)
 ```
 
 ### 1. Show where the distribution is centered at and compare it to the theoretical center of the distribution.
-
 Calculate the expected theoretical center and the center (mean) of `distMean`. 
-```{r  DistCenterHist, fig.width=8}
-centerTheoretical <- 1/lambda
-centerCalculated <- mean(distMean)
-
-pl <- ggplot(data=data.frame(distMean), aes(x=distMean)) +
-  geom_histogram(binwidth=0.25, colour='white') + 
-  ggtitle('Frequency of Distribution Means') + xlab('Distribution Mean') + 
-  scale_x_continuous(breaks = round(seq(min(distMean), max(distMean), by = 0.5),1)) + 
-  geom_vline(xintercept=centerCalculated, colour='green') + ylab('Frequency')
-print(plot)
+```{r echo=TRUE}
+centerTheoretical <- 1/lambda; centerCalculated <- mean(distMean);
 ```
 
-The theoretical center of the distribution is: $1/\lambda$ = 1/0.2 = `r centerTheoretical`. The center of the distribution, indicated by the green line, is `r centerCalculated`.
+```{r  DistCenterHist, fig.width=6, fig.height=3, echo=FALSE}
+pl <- ggplot(data=data.frame(distMean), aes(x=distMean)) +
+  geom_histogram(binwidth=0.25, colour='white') + 
+  #ggtitle('Distribution Mean Frequency') + 
+  xlab('Distribution Mean') + 
+  scale_x_continuous(breaks = round(seq(min(distMean), max(distMean), by = 0.5),1)) + 
+  geom_vline(xintercept=centerCalculated, colour='green', size=1) + 
+  ylab('Frequency') +
+  theme(title=element_text(size=9),
+        axis.text=element_text(size=9),
+        axis.title=element_text(size=10))
+print(pl)
+```
+
+The theoretical center of the distribution is: $1/\lambda$ = 1/0.2 = `r centerTheoretical`. Our calculated center of the distribution, indicated by the green line, is `r centerCalculated`. The two are very close.
+
+### 2. Show how variable it is and compare it to the theoretical variance of the distribution.
+```{r Q2}
+sdTheoretical <- (1/lambda)*(1/sqrt(s)); sdCalculated <- sd(distMean);
+varTheoretical <- sdTheoretical^2; varCalculated <- sdCalculated^2;
+```
+
+The theoretical standard deviation is calculated as follow: $(\frac{1}{\lambda} * \frac{1}{\sqrt{n}})$ = `r sdTheoretical` yielding a variance of `r varTheoretical`. Our calculated standard deviation of the distribution is `r sdCalculated` yielding a calculated variance of `r varCalculated`. Again the theoretical and calculated values are very close to each other.
+
+### 3. Show that the distribution is approximately normal.
+In an effort to compare our calculated distribution with a normal distribution I render the histogram shown earlier with the Y Axis showing the density as opposed to the previous shown frequency and I then overlay a Normal Distribution (red line) using the our `centerCalculated` and `sdCalculated` variables. This plot clearly shows that our distribution is approximately normal.
+
+```{r  NormHist, fig.width=6, fig.height=2.5, echo=FALSE}
+pl <- ggplot(data=data.frame(distMean), aes(x=distMean)) +
+  geom_histogram(aes(y = ..density..), binwidth=0.25, colour='white') + 
+    #ggtitle('Calculated Distribution vs Normal Distribution') + 
+    xlab('Distribution Mean') + 
+    scale_x_continuous(breaks = round(seq(min(distMean), max(distMean), by = 0.5),1)) + 
+    ylab('Density') +
+    stat_function(
+      fun = dnorm, 
+      args = with(data.frame(distMean), c(mean = mean(distMean), sd = sd(distMean))), 
+      colour='red', size=1) +
+    theme(title=element_text(size=9),
+        axis.text=element_text(size=9),
+        axis.title=element_text(size=10))
+print(pl)
+```
+
+### 4. Evaluate the coverage of the confidence interval for $1/\lambda = \bar{X} \pm 1.96 \frac{S}{\sqrt{n}}$.
+Start by creating a function `calcCover` that returns the coverage for a specified lambda, then create a range of lambdas, calculate their respective coverage and lastly calculate the vertical bounds (`vBounds`). Finally plot the `cover` against the `lambdas`.
+```{r}
+calcCover <- function(x) {
+  offset <-  (1.96 * sqrt(1/lambda**2/s));
+  ll <- distMean - offset; ul <- distMean + offset;
+  mean(ll < x & ul > x)
+}
+lambdas <- seq(4.25, 5.75, by=0.01); cover <- sapply(lambdas, calcCover);
+vBounds <- centerCalculated + (c(-1,1) * 1.96 * sdCalculated/sqrt(s))
+```
+
+```{r  Cover, fig.width=6, fig.height=2.5, echo=FALSE, warning=FALSE}
+pl <- ggplot(data.frame(lambdas, cover), aes(x = lambdas, y = cover)) + 
+  geom_line(size = 1) + 
+  geom_vline(xintercept=vBounds, col="red") +
+  geom_hline(yintercept = 0.95, col="blue") + 
+  xlab('Lambda') +
+  ylab('Coverage') +
+    ylim(.85, 1.0) +
+    theme(title=element_text(size=9),
+        axis.text=element_text(size=9),
+        axis.title=element_text(size=10))
+
+print(pl)
+```
+
+The horizontal blue line marks the 95% confidence interval and the vertical red lines (`r vBounds[1]` and `r vBounds[2]`) marks the above 95% interval. 

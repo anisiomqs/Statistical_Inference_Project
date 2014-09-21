@@ -1,0 +1,90 @@
+---
+title: "Statistical Inference - Course Project - Question 2"
+output:
+  pdf_document: default
+  html_document:
+    keep_md: yes
+date: '2014-09-21'
+---
+
+```{r, echo=FALSE, message=FALSE, cache=FALSE}
+require(ggplot2)
+require(knitr)
+require(plyr)
+
+opts_chunk$set(echo=TRUE, message=FALSE, cache=FALSE)
+```
+
+### Synopsis
+In this report, I will review and analyze the ToothGrowth data in the R datasets package. This dataset details The Effect of Vitamin C on Tooth Growth in Guinea Pigs. The response is the length of odontoblasts (teeth) in each of 10 guinea pigs at each of three dose levels of Vitamin C (0.5, 1, and 2 mg) with each of two delivery methods (orange juice or ascorbic acid). The Data Dictionary is as follow:
+
+Field | Data Type | Definition
+----- | --------- | ---------- 
+`len` |	numeric	| Tooth length
+`supp`	| factor	| Supplement type (OJ or VC).
+`dose`	| numeric	| Dose in milligrams.
+
+```{r echo=FALSE}
+data(ToothGrowth);
+```
+### 1 & 2. Load the ToothGrowth data and perform some basic exploratory data analyses. Provide a basic summary of the data.
+We call `data(ToothGrowth)` to load the data set followed by `str(ToothGrowth)` to get our first impression of the data structure. Next we use comparative box plots to get a feel for the relationship between `len`, `supp` and `dose` and close our exploration off with a `summary(ToothGrowth)` function call.
+```{r echo=FALSE}
+#head(ToothGrowth, 2); 
+#`head(ToothGrowth)` get our first view of the ToothGrowth data and lastly we use
+str(ToothGrowth);
+
+```
+
+```{r  DistCenterHist, fig.width=6, fig.height=3, echo=FALSE}
+pl <- ggplot(data=ToothGrowth, aes(x=factor(dose), y=len, fill=factor(supp))) +
+        facet_grid(. ~ supp) +
+        geom_boxplot() +
+        scale_colour_continuous(guide = FALSE) +
+        ylab('Tooth Length') + 
+        xlab('Dose (mg)') +
+  theme(title=element_text(size=9),
+        axis.text=element_text(size=9),
+        axis.title=element_text(size=10),
+        legend.title=element_blank()) +
+  guides(colour=FALSE)
+  
+print(pl)
+
+summary(ToothGrowth);
+```
+
+### 3. Use Confidence Intervals (CI) and hypothesis tests to compare tooth growth by supp and dose.
+A review of the plot above seems to show that supplement type OJ (orange juice) achieves better growth at lower doses (0.5mg and 1.0mg) than VC (ascorbic acid) but at higher doses they realize comparable growth. It also seems clear dose and growth are positively correlated. Using a Welch Two Sample t-test we can review tooth growth attributed to supplement and dose by calling `t.test(len~supp, data=ToothGrowth)`.
+```{r echo=FALSE}
+t.test(len~supp, data=ToothGrowth)
+
+ToothGrowth$dose = factor(ToothGrowth$dose, levels=c(0.5,1.0,2.0), labels=c("low","med","high"))
+
+tTest <- function(compare, data, type) {
+  r <- t.test(compare, data=data)
+  c(type, r$conf, r$statistic, r$p.value)
+}
+
+tt_supp <- tTest(len ~ supp, data=ToothGrowth, 'Length ~ Supplement [OJ vs. VC]')
+tt_dose_l_m <- tTest(len ~ dose, data=ToothGrowth[ToothGrowth$dose=="low" | ToothGrowth$dose=="med",], 'Length ~ Dose [0.5mg vs. 1.0mg]')
+tt_dose_m_h <- tTest(len ~ dose, data=ToothGrowth[ToothGrowth$dose=="med" | ToothGrowth$dose=="high",], 'Length ~ Dose [1.0mg vs. 2.0mg]')
+```
+Next we execute T Tests on the dose specific subsets of the `ToothGrowth` dataset. Our findings are tabulated below:
+
+T Test | Lower 95% CI | Upper 95% CI | t | p-value
+----------- | ----------- | ----------- | - | ------
+`r tt_supp[1]` | `r round(as.numeric(tt_supp[2]), 3)` | `r round(as.numeric(tt_supp[3]), 3)` | `r round(as.numeric(tt_supp[4]), 2)` | `r round(as.numeric(tt_supp[5]), 5)`
+`r tt_dose_l_m[1]` | `r round(as.numeric(tt_dose_l_m[2]), 3)` | `r round(as.numeric(tt_dose_l_m[3]), 3)` | `r round(as.numeric(tt_dose_l_m[4]), 2)` | `r tt_dose_l_m[5]`
+`r tt_dose_m_h[1]` | `r round(as.numeric(tt_dose_m_h[2]), 3)` | `r round(as.numeric(tt_dose_m_h[3]), 3)` | `r round(as.numeric(tt_dose_m_h[4]), 2)` | `r tt_dose_m_h[5]`
+
+
+### 4. State your conclusions and the assumptions needed for your conclusions. 
+
+#### Assumptions:
+I'm assuming that all significant factors (i.e. habitat and feeding) were controlled for the duration of the experiment. The analysis was also done under the assumption that the populations exhibit differing variances.
+
+#### Conclusions:
+- Supplement [OJ vs. VC]: The null hypothesis is accepted. There is insufficient proof for rejecting the null hypothesis that OJ and VC yield similar growth. The p-value is in excess of 0.05 at `r round(as.numeric(tt_supp[5]), 5)`.
+- Dose [0.5mg vs. 1.0mg]: The null hypothesis is rejected. There is overwhelming proof that a dose increase from 0.5mg to 1.0mg will yield more growth.  The p-value is far below 0.05 at `r tt_dose_l_m[5]`.
+- Dose [1.0mg vs. 2.0mg]: The null hypothesis is rejected. There is overwhelming proof that a dose increase from 1.0mg to 2.0mg will yield more growth.  The p-value is far below 0.05 at `r tt_dose_m_h[5]`.
